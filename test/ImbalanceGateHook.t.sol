@@ -22,11 +22,10 @@ contract MockPoolManager {
         locked = false;
     }
 
-    function dispatchAfterSwap(
-        address hookAddress,
-        PoolKey calldata key,
-        BalanceDelta delta
-    ) external returns (bytes4, int128) {
+    function dispatchAfterSwap(address hookAddress, PoolKey calldata key, BalanceDelta delta)
+        external
+        returns (bytes4, int128)
+    {
         IPoolManager.SwapParams memory emptyParams;
         return IHooks(hookAddress).afterSwap(msg.sender, key, emptyParams, delta, "");
     }
@@ -81,11 +80,7 @@ contract ImbalanceGateHookTest is Test {
 
         address hookAddress = address(uint160(Hooks.AFTER_SWAP_FLAG));
 
-        ImbalanceGateHook impl = new ImbalanceGateHook(
-            IPoolManager(address(manager)),
-            EPSILON0,
-            EPSILON1
-        );
+        ImbalanceGateHook impl = new ImbalanceGateHook(IPoolManager(address(manager)), EPSILON0, EPSILON1);
         vm.etch(hookAddress, address(impl).code);
         hook = ImbalanceGateHook(hookAddress);
 
@@ -125,10 +120,7 @@ contract ImbalanceGateHookTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ImbalanceGateHook.MaxImbalanceExceeded.selector,
-                key.toId(),
-                int256(1001),
-                int256(-500)
+                ImbalanceGateHook.MaxImbalanceExceeded.selector, key.toId(), int256(1001), int256(-500)
             )
         );
         router.executeSwaps(key, swaps);
@@ -136,24 +128,19 @@ contract ImbalanceGateHookTest is Test {
 
     function test_ExactThreshold_Passes() public {
         GuardedUnlockRouter.SwapSimulation[] memory swaps = new GuardedUnlockRouter.SwapSimulation[](1);
-        swaps[0] = GuardedUnlockRouter.SwapSimulation({delta0: int128(int256(EPSILON0)), delta1: -int128(int256(EPSILON1))});
+        swaps[0] =
+            GuardedUnlockRouter.SwapSimulation({delta0: int128(int256(EPSILON0)), delta1: -int128(int256(EPSILON1))});
 
         router.executeSwaps(key, swaps);
     }
 
     function test_ThresholdPlusOne_Reverts() public {
         GuardedUnlockRouter.SwapSimulation[] memory swaps = new GuardedUnlockRouter.SwapSimulation[](1);
-        swaps[0] = GuardedUnlockRouter.SwapSimulation({
-            delta0: int128(int256(EPSILON0 + 1)), 
-            delta1: 0
-        });
+        swaps[0] = GuardedUnlockRouter.SwapSimulation({delta0: int128(int256(EPSILON0 + 1)), delta1: 0});
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                ImbalanceGateHook.MaxImbalanceExceeded.selector,
-                key.toId(),
-                int256(EPSILON0 + 1),
-                int256(0)
+                ImbalanceGateHook.MaxImbalanceExceeded.selector, key.toId(), int256(EPSILON0 + 1), int256(0)
             )
         );
         router.executeSwaps(key, swaps);
@@ -183,12 +170,7 @@ contract ImbalanceGateHookTest is Test {
 
         if (absNet0 > EPSILON0) {
             vm.expectRevert(
-                abi.encodeWithSelector(
-                    ImbalanceGateHook.MaxImbalanceExceeded.selector,
-                    key.toId(),
-                    net0,
-                    int256(0)
-                )
+                abi.encodeWithSelector(ImbalanceGateHook.MaxImbalanceExceeded.selector, key.toId(), net0, int256(0))
             );
             router.executeSwaps(key, swaps);
         } else {

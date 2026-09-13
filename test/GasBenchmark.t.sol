@@ -21,11 +21,10 @@ contract BenchmarkPoolManager {
         locked = false;
     }
 
-    function dispatchAfterSwap(
-        address hookAddress,
-        PoolKey calldata key,
-        BalanceDelta delta
-    ) external returns (bytes4, int128) {
+    function dispatchAfterSwap(address hookAddress, PoolKey calldata key, BalanceDelta delta)
+        external
+        returns (bytes4, int128)
+    {
         IPoolManager.SwapParams memory emptyParams;
         return IHooks(hookAddress).afterSwap(msg.sender, key, emptyParams, delta, "");
     }
@@ -46,12 +45,9 @@ contract BenchmarkRouter is IUnlockCallback {
     }
 
     function runBenchmark(address hook, PoolKey calldata key, uint256 swapCount, bool isPersistent) external {
-        manager.unlock(abi.encode(ExecutionPayload({
-            hook: hook,
-            key: key,
-            swapCount: swapCount,
-            isPersistent: isPersistent
-        })));
+        manager.unlock(
+            abi.encode(ExecutionPayload({hook: hook, key: key, swapCount: swapCount, isPersistent: isPersistent}))
+        );
     }
 
     function unlockCallback(bytes calldata data) external override returns (bytes memory) {
@@ -97,7 +93,8 @@ contract GasBenchmarkTest is Test {
 
         // Setup Persistent Hook
         address pAddr = address(uint160(Hooks.AFTER_SWAP_FLAG | 0x100));
-        PersistentImbalanceGateHook pImpl = new PersistentImbalanceGateHook(IPoolManager(address(manager)), 100000, 100000);
+        PersistentImbalanceGateHook pImpl =
+            new PersistentImbalanceGateHook(IPoolManager(address(manager)), 100000, 100000);
         vm.etch(pAddr, address(pImpl).code);
         persistentHook = pAddr;
 
@@ -126,9 +123,23 @@ contract GasBenchmarkTest is Test {
         console.log("Delta Saved (Persistent - Transient):", persistentGas - transientGas);
     }
 
-    function test_Benchmark_1_Swap() public { _benchmarkSwaps(1); }
-    function test_Benchmark_2_Swaps() public { _benchmarkSwaps(2); }
-    function test_Benchmark_5_Swaps() public { _benchmarkSwaps(5); }
-    function test_Benchmark_10_Swaps() public { _benchmarkSwaps(10); }
-    function test_Benchmark_20_Swaps() public { _benchmarkSwaps(20); }
+    function test_Benchmark_1_Swap() public {
+        _benchmarkSwaps(1);
+    }
+
+    function test_Benchmark_2_Swaps() public {
+        _benchmarkSwaps(2);
+    }
+
+    function test_Benchmark_5_Swaps() public {
+        _benchmarkSwaps(5);
+    }
+
+    function test_Benchmark_10_Swaps() public {
+        _benchmarkSwaps(10);
+    }
+
+    function test_Benchmark_20_Swaps() public {
+        _benchmarkSwaps(20);
+    }
 }

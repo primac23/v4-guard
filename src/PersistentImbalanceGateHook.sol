@@ -18,11 +18,9 @@ contract PersistentImbalanceGateHook is BaseHook {
 
     mapping(bytes32 => int256) public storageSlots;
 
-    constructor(
-        IPoolManager _poolManager,
-        uint256 _maxAllowedDelta0,
-        uint256 _maxAllowedDelta1
-    ) BaseHook(_poolManager) {
+    constructor(IPoolManager _poolManager, uint256 _maxAllowedDelta0, uint256 _maxAllowedDelta1)
+        BaseHook(_poolManager)
+    {
         MAX_ALLOWED_DELTA0 = _maxAllowedDelta0;
         MAX_ALLOWED_DELTA1 = _maxAllowedDelta1;
     }

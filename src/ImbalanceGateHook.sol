@@ -16,11 +16,9 @@ contract ImbalanceGateHook is BaseHook {
     uint256 public immutable MAX_ALLOWED_DELTA0;
     uint256 public immutable MAX_ALLOWED_DELTA1;
 
-    constructor(
-        IPoolManager _poolManager,
-        uint256 _maxAllowedDelta0,
-        uint256 _maxAllowedDelta1
-    ) BaseHook(_poolManager) {
+    constructor(IPoolManager _poolManager, uint256 _maxAllowedDelta0, uint256 _maxAllowedDelta1)
+        BaseHook(_poolManager)
+    {
         MAX_ALLOWED_DELTA0 = _maxAllowedDelta0;
         MAX_ALLOWED_DELTA1 = _maxAllowedDelta1;
     }
