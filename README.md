@@ -4,11 +4,32 @@
 
 Security primitives for Uniswap v4 hooks, built on EIP-1153 transient storage.
 
+**In a reproducible test it blocks a flash-loan oracle attack that earns 0.59 token1 per 1 token1 borrowed on an unprotected pool, an attack the closest existing halt-based hook lets through unchanged.** It ships as a standalone hook and as a base contract that existing hooks can inherit.
+
 The main component is `TickExcursionGuardHook`, a hook that limits how far a pool's price can move inside a single transaction. It is checked after every swap, so the caller cannot skip it, and it reverts the transaction as soon as the tick drifts more than a configured number of ticks away from where it started.
 
 ## Why
 
 Plenty of protocols still read a pool's spot price directly. The usual way to attack them is a flash-loan round trip: push the price, use the distorted price somewhere else, push it back, repay. The net flow of such a transaction is close to zero, so checks based on volume or balances don't notice anything. What gives it away is the price excursion in the middle, and that is exactly what this hook bounds.
+
+## How it works
+
+```mermaid
+sequenceDiagram
+    participant A as Attacker (any router)
+    participant PM as PoolManager
+    participant H as TickExcursionGuardHook
+    participant L as Lending market (reads slot0)
+    A->>PM: swap with a flash-loaned amount
+    PM->>H: beforeSwap
+    H->>H: first swap on this pool in the tx? store start tick (TSTORE)
+    PM->>PM: price moves
+    PM->>H: afterSwap
+    H->>H: |tick - startTick| > bound?
+    H-->>PM: revert TickExcursionExceeded
+    PM-->>A: whole transaction reverts
+    Note over L: never sees the manipulated price
+```
 
 ## Proof of concept
 
@@ -19,6 +40,7 @@ A flash-loan attack on a lending market that prices collateral from `slot0` turn
 | Contract | What it does | Status |
 |---|---|---|
 | `TickExcursionGuardHook` | Records the pool tick before the first swap of a transaction (transient storage) and reverts any swap that leaves the tick more than `MAX_TICK_DEVIATION` away from it. | Tested on the real v4 PoolManager |
+| `TickExcursionGuard` | Abstract base with the same check as internal functions, so an existing hook can add the protection to its own callbacks. A pool can only have one hook, so this is how the guard combines with other logic. | Tested through an example composed hook |
 | `TransientReentrancyGuard` | Transaction-scoped reentrancy lock using TSTORE/TLOAD. Same behaviour as OpenZeppelin's `ReentrancyGuardTransient`; kept as a small self-contained utility. | Unit tested |
 | `ImbalanceGateHook` | Accumulates per-pool swap deltas and exposes `validateSettlementInvariant`. The check only runs if the router calls it, so it works as a cooperative volume limit for trusted routers, not as a defence against an attacker. | Experimental |
 
@@ -44,6 +66,19 @@ Bounding price movement from a hook is not a new idea. The closest projects I kn
 
 Where v4-guard differs: the check is scoped to a single transaction and reverts the swap that crosses the bound, instead of letting it through and reacting afterwards. That matters for single-transaction attacks like the PoC above, where the attacker never needs to move the price back. The hook also keeps no persistent state and has no owner, so it can't be used to halt a pool for other traders. The trade-off is that manipulation spread over several transactions in a block is not covered.
 
+### At a glance
+
+Both columns come from tests in this repository, run with the same 50-tick bound.
+
+| | v4-guard | circuit-breaker |
+|---|---|---|
+| Single-transaction oracle attack (our PoC) | reverts | succeeds, same profit as with no hook |
+| Manipulation spread over several transactions | not covered | covered by the window and halt |
+| Honest traders after an attack | unaffected | halted for the cooldown |
+| Configuration | immutable per deployment, nothing to configure | per pool, set before initialization |
+| Persistent storage | none | yes |
+| Can be combined with another hook's logic | yes, via `TickExcursionGuard` | no |
+
 ## Gas
 
 Measured on the real PoolManager with identical pools, with and without the hook. A single swap costs 11,632 gas more (7.8% of the swap call). Full table and method in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
@@ -61,6 +96,34 @@ The hook must be deployed at an address whose low bits encode `BEFORE_SWAP` and 
 TickExcursionGuardHook hook = new TickExcursionGuardHook{salt: salt}(poolManager, 50);
 ```
 
+## Adding the guard to your own hook
+
+A pool can only have one hook. If you already have one, inherit `TickExcursionGuard` and call it from your callbacks:
+
+```solidity
+contract MyHook is BaseHook, TickExcursionGuard {
+    uint24 public immutable MAX_TICK_DEVIATION = 50;
+
+    function beforeSwap(address, PoolKey calldata key, SwapParams calldata, bytes calldata)
+        external override onlyPoolManager returns (bytes4, BeforeSwapDelta, uint24)
+    {
+        _recordStartTick(poolManager, key.toId()); // first
+        // ... your logic
+        return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
+    }
+
+    function afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta, bytes calldata)
+        external override onlyPoolManager returns (bytes4, int128)
+    {
+        // ... your logic
+        _enforceTickExcursion(poolManager, key.toId(), MAX_TICK_DEVIATION); // last
+        return (this.afterSwap.selector, 0);
+    }
+}
+```
+
+`test/ComposedGuard.t.sol` shows a hook with its own state using it: normal swaps run the hook's logic, and a manipulating swap reverts together with that state.
+
 ## Tests
 
 ```bash
@@ -68,7 +131,7 @@ forge test -vv
 forge test --match-contract GasBenchmarkV2Test -vv
 ```
 
-27 tests passing.
+29 tests passing.
 
 ## Documentation
 
