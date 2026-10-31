@@ -1,5 +1,7 @@
 # v4-guard
 
+[![CI](https://github.com/primac23/v4-guard/actions/workflows/test.yml/badge.svg)](https://github.com/primac23/v4-guard/actions/workflows/test.yml)
+
 Security primitives for Uniswap v4 hooks, built on EIP-1153 transient storage.
 
 The main component is `TickExcursionGuardHook`, a hook that limits how far a pool's price can move inside a single transaction. It is checked after every swap, so the caller cannot skip it, and it reverts the transaction as soon as the tick drifts more than a configured number of ticks away from where it started.
@@ -28,7 +30,19 @@ For every pool, after every swap in a transaction: `|tick - startTick| <= MAX_TI
 - Holds after every swap, not only at the end, so an out-and-back manipulation reverts at the first swap that crosses the bound.
 - State is keyed by pool id and disappears at the end of the transaction.
 
-Not covered: manipulation split across several transactions or blocks (a block-scoped mode is planned), moves that stay within the bound, and depth changes through liquidity add/remove. All swaps on a pool in one transaction share the same budget, which matters for batched settlement. Details in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+Not covered: manipulation split across several transactions or blocks (hooks with a per-block reference cover that case, see Related work), moves that stay within the bound, and depth changes through liquidity add/remove. All swaps on a pool in one transaction share the same budget, which matters for batched settlement. Details in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+
+## Related work
+
+Bounding price movement from a hook is not a new idea. The closest projects I know of:
+
+- [nirholas/circuit-breaker](https://github.com/nirholas/circuit-breaker) compares the tick with a reference window after every swap and halts swapping for a cooldown once the limit is crossed. The swap that crosses the limit is allowed to complete, by design.
+- [FairOpenHook](https://github.com/n0krayy/FairOpenHook) reverts swaps that move the price more than 25% during a token's opening window.
+- [CrossPoolOracleHook](https://github.com/pnupu/crosspooloraclehook) compares a pool's price impact with deep reference pools and blocks swaps whose impact the reference pools don't explain.
+- Uniswap's [Truncated Oracle](https://blog.uniswap.org/uniswap-v4-truncated-oracle-hook) caps how far the recorded oracle tick can move per block. It does not block swaps.
+- OpenZeppelin's [AntiSandwichHook](https://docs.openzeppelin.com/uniswap-hooks) uses a beginning-of-block checkpoint so that no swap fills at a better price than the block started with.
+
+Where v4-guard differs: the check is scoped to a single transaction and reverts the swap that crosses the bound, instead of letting it through and reacting afterwards. That matters for single-transaction attacks like the PoC above, where the attacker never needs to move the price back. The hook also keeps no persistent state and has no owner, so it can't be used to halt a pool for other traders. The trade-off is that manipulation spread over several transactions in a block is not covered.
 
 ## Gas
 
