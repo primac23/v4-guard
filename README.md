@@ -8,6 +8,10 @@ The main component is `TickExcursionGuardHook`, a hook that limits how far a poo
 
 Plenty of protocols still read a pool's spot price directly. The usual way to attack them is a flash-loan round trip: push the price, use the distorted price somewhere else, push it back, repay. The net flow of such a transaction is close to zero, so checks based on volume or balances don't notice anything. What gives it away is the price excursion in the middle, and that is exactly what this hook bounds.
 
+## Proof of concept
+
+A flash-loan attack on a lending market that prices collateral from `slot0` turns a 1 token1 loan into 0.5928 token1 of profit and leaves 1.0936 token1 of bad debt when the pool has no hook. On the same pool with `TickExcursionGuardHook`, the attack reverts. Setup, numbers and limits: [docs/POC_FLASHLOAN_ORACLE.md](docs/POC_FLASHLOAN_ORACLE.md).
+
 ## Components
 
 | Contract | What it does | Status |
@@ -50,13 +54,14 @@ forge test -vv
 forge test --match-contract GasBenchmarkV2Test -vv
 ```
 
-24 tests passing.
+27 tests passing.
 
 ## Documentation
 
 - [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)
 - [docs/INVARIANTS.md](docs/INVARIANTS.md)
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
+- [docs/POC_FLASHLOAN_ORACLE.md](docs/POC_FLASHLOAN_ORACLE.md)
 
 ## License
 
