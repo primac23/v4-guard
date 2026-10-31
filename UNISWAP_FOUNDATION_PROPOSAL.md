@@ -27,6 +27,7 @@ Pools are still used as price sources by lending markets, vaults and liquidation
 | 5 | 404,603 | 447,353 | +42,750 | +8,550 | +10.6% |
 
 - Working PoC: a flash-loan attack on a lending market that reads `slot0` earns 0.5928 token1 on a 1 token1 loan without the hook and reverts with it ([docs/POC_FLASHLOAN_ORACLE.md](docs/POC_FLASHLOAN_ORACLE.md)).
+- Compared with the closest existing hook ([nirholas/circuit-breaker](https://github.com/nirholas/circuit-breaker)), which halts after a limit move but lets the breaching swap complete: with the same 50-tick bound, the same attack earns exactly what it earns on an unhooked pool (0.5928 token1) and reverts with v4-guard ([docs/COMPARISON_CIRCUIT_BREAKER.md](docs/COMPARISON_CIRCUIT_BREAKER.md)).
 - Known limits are documented in the README and threat model.
 
 An earlier version of this proposal cited a gas saving of about 35,600 measured against a persistent-storage variant on a mock PoolManager. That comparison wasn't representative and has been removed.

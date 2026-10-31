@@ -36,7 +36,7 @@ Not covered: manipulation split across several transactions or blocks (hooks wit
 
 Bounding price movement from a hook is not a new idea. The closest projects I know of:
 
-- [nirholas/circuit-breaker](https://github.com/nirholas/circuit-breaker) compares the tick with a reference window after every swap and halts swapping for a cooldown once the limit is crossed. The swap that crosses the limit is allowed to complete, by design.
+- [nirholas/circuit-breaker](https://github.com/nirholas/circuit-breaker) compares the tick with a reference window after every swap and halts swapping for a cooldown once the limit is crossed. The swap that crosses the limit is allowed to complete, by design. Run against the same single-transaction PoC with the same 50-tick bound, the attack still succeeds with exactly the same profit as on an unhooked pool (0.5928 token1 on a 1 token1 loan), and the pool halts only afterwards, locking out honest traders for the cooldown ([details](docs/COMPARISON_CIRCUIT_BREAKER.md)).
 - [FairOpenHook](https://github.com/n0krayy/FairOpenHook) reverts swaps that move the price more than 25% during a token's opening window.
 - [CrossPoolOracleHook](https://github.com/pnupu/crosspooloraclehook) compares a pool's price impact with deep reference pools and blocks swaps whose impact the reference pools don't explain.
 - Uniswap's [Truncated Oracle](https://blog.uniswap.org/uniswap-v4-truncated-oracle-hook) caps how far the recorded oracle tick can move per block. It does not block swaps.
@@ -76,6 +76,7 @@ forge test --match-contract GasBenchmarkV2Test -vv
 - [docs/INVARIANTS.md](docs/INVARIANTS.md)
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
 - [docs/POC_FLASHLOAN_ORACLE.md](docs/POC_FLASHLOAN_ORACLE.md)
+- [docs/COMPARISON_CIRCUIT_BREAKER.md](docs/COMPARISON_CIRCUIT_BREAKER.md)
 
 ## License
 
