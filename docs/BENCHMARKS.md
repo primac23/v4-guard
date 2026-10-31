@@ -12,9 +12,9 @@
 
 | Swaps in one tx | No hook | With TickExcursionGuardHook | Overhead | Overhead per swap | Relative |
 |:-:|-:|-:|-:|-:|-:|
-| 1 | 149,285 | 160,917 | +11,632 | +11,632 | +7.8% |
-| 2 | 228,883 | 248,261 | +19,378 | +9,689 | +8.5% |
-| 5 | 404,603 | 447,353 | +42,750 | +8,550 | +10.6% |
+| 1 | 149,285 | 160,966 | +11,681 | +11,681 | +7.8% |
+| 2 | 228,883 | 248,359 | +19,476 | +9,738 | +8.5% |
+| 5 | 404,603 | 447,598 | +42,995 | +8,599 | +10.6% |
 
 Figures are the gas used by the whole swap call (router, PoolManager and hook), measured with `gasleft()` around the call.
 

@@ -8,7 +8,7 @@
 - **Duration:** 12 weeks, 4 milestones
 - **Applicant:** Primac George ([github.com/primac23](https://github.com/primac23))
 
-v4-guard is a small library of security hooks for Uniswap v4. Its core piece, `TickExcursionGuardHook`, caps how far a pool's price can move inside a single transaction. It runs on every swap, the router can't skip it, and on a single swap it adds 11,632 gas (7.8%).
+v4-guard is a small library of security hooks for Uniswap v4. Its core piece, `TickExcursionGuardHook`, caps how far a pool's price can move inside a single transaction. It runs on every swap, the router can't skip it, and on a single swap it adds 11,681 gas (7.8%).
 
 ## Problem
 
@@ -22,9 +22,9 @@ Pools are still used as price sources by lending markets, vaults and liquidation
 
 | Swaps in one tx | No hook | With TickExcursionGuardHook | Overhead | Overhead per swap | Relative |
 |:-:|-:|-:|-:|-:|-:|
-| 1 | 149,285 | 160,917 | +11,632 | +11,632 | +7.8% |
-| 2 | 228,883 | 248,261 | +19,378 | +9,689 | +8.5% |
-| 5 | 404,603 | 447,353 | +42,750 | +8,550 | +10.6% |
+| 1 | 149,285 | 160,966 | +11,681 | +11,681 | +7.8% |
+| 2 | 228,883 | 248,359 | +19,476 | +9,738 | +8.5% |
+| 5 | 404,603 | 447,598 | +42,995 | +8,599 | +10.6% |
 
 - Working PoC: a flash-loan attack on a lending market that reads `slot0` earns 0.5928 token1 on a 1 token1 loan without the hook and reverts with it ([docs/POC_FLASHLOAN_ORACLE.md](docs/POC_FLASHLOAN_ORACLE.md)).
 - Compared with the closest existing hook ([nirholas/circuit-breaker](https://github.com/nirholas/circuit-breaker)), which halts after a limit move but lets the breaching swap complete: with the same 50-tick bound, the same attack earns exactly what it earns on an unhooked pool (0.5928 token1) and reverts with v4-guard ([docs/COMPARISON_CIRCUIT_BREAKER.md](docs/COMPARISON_CIRCUIT_BREAKER.md)).

@@ -4,9 +4,13 @@
 
 Security primitives for Uniswap v4 hooks, built on EIP-1153 transient storage.
 
-**In a reproducible test it blocks a flash-loan oracle attack that earns 0.59 token1 per 1 token1 borrowed on an unprotected pool, an attack the closest existing halt-based hook lets through unchanged.** It ships as a standalone hook and as a base contract that existing hooks can inherit.
+**In a reproducible test it blocks a flash-loan oracle attack that earns 0.59 token1 per 1 token1 borrowed on an unprotected pool, an attack that a comparable halt-based hook ([circuit-breaker](docs/COMPARISON_CIRCUIT_BREAKER.md)) lets through unchanged in the same test.** It ships as a standalone hook and as a base contract that existing hooks can inherit.
 
-The main component is `TickExcursionGuardHook`, a hook that limits how far a pool's price can move inside a single transaction. It is checked after every swap, so the caller cannot skip it, and it reverts the transaction as soon as the tick drifts more than a configured number of ticks away from where it started.
+The main component is `TickExcursionGuardHook`, a hook that limits how far a pool's price can move inside a single transaction. It runs in the hook callbacks, which the PoolManager calls for every swap whatever router is used, so the caller has no step to skip (custom-router cases are in `test/Adversarial.t.sol`), and it reverts the transaction as soon as the tick drifts more than a configured number of ticks away from where it started.
+
+## Security status
+
+Not audited. The tests and green CI show how the code behaves in the tested cases, adversarial ones included. They are not a security certification. The reference version is the `v0.2.0` tag. Scope, what counts as a break, and how to report: [SECURITY.md](SECURITY.md).
 
 ## Why
 
@@ -57,7 +61,7 @@ Not covered: manipulation split across several transactions or blocks (hooks wit
 
 ## Related work
 
-Bounding price movement from a hook is not a new idea. The closest projects I know of:
+Bounding price movement from a hook is not a new idea. The closest projects I found, with how each comparison was established in [docs/PRIOR_ART.md](docs/PRIOR_ART.md):
 
 - [nirholas/circuit-breaker](https://github.com/nirholas/circuit-breaker) compares the tick with a reference window after every swap and halts swapping for a cooldown once the limit is crossed. The swap that crosses the limit is allowed to complete, by design. Run against the same single-transaction PoC with the same 50-tick bound, the attack still succeeds with exactly the same profit as on an unhooked pool (0.5928 token1 on a 1 token1 loan), and the pool halts only afterwards, locking out honest traders for the cooldown ([details](docs/COMPARISON_CIRCUIT_BREAKER.md)).
 - [FairOpenHook](https://github.com/n0krayy/FairOpenHook) reverts swaps that move the price more than 25% during a token's opening window.
@@ -65,7 +69,7 @@ Bounding price movement from a hook is not a new idea. The closest projects I kn
 - Uniswap's [Truncated Oracle](https://blog.uniswap.org/uniswap-v4-truncated-oracle-hook) caps how far the recorded oracle tick can move per block. It does not block swaps.
 - OpenZeppelin's [AntiSandwichHook](https://docs.openzeppelin.com/uniswap-hooks) uses a beginning-of-block checkpoint so that no swap fills at a better price than the block started with.
 
-Where v4-guard differs: the check is scoped to a single transaction and reverts the swap that crosses the bound, instead of letting it through and reacting afterwards. That matters for single-transaction attacks like the PoC above, where the attacker never needs to move the price back. The hook also keeps no persistent state and has no owner, so it can't be used to halt a pool for other traders. The trade-off is that manipulation spread over several transactions in a block is not covered.
+Where v4-guard differs: the check is scoped to a single transaction and reverts the swap that crosses the bound, instead of letting it through and reacting afterwards. That matters for single-transaction attacks like the PoC above, where the attacker never needs to move the price back. The hook also keeps no persistent state and has no owner, so it has no mechanism for halting a pool for other traders. The trade-off is that manipulation spread over several transactions in a block is not covered.
 
 ### At a glance
 
@@ -82,7 +86,7 @@ Both columns come from tests in this repository, run with the same 50-tick bound
 
 ## Gas
 
-Measured on the real PoolManager with identical pools, with and without the hook. A single swap costs 11,632 gas more (7.8% of the swap call). Full table and method in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+Measured on the real PoolManager with identical pools, with and without the hook. A single swap costs 11,681 gas more (7.8% of the swap call). Full table and method in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ## Usage
 
@@ -141,6 +145,8 @@ forge test --match-contract GasBenchmarkV2Test -vv
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
 - [docs/POC_FLASHLOAN_ORACLE.md](docs/POC_FLASHLOAN_ORACLE.md)
 - [docs/COMPARISON_CIRCUIT_BREAKER.md](docs/COMPARISON_CIRCUIT_BREAKER.md)
+- [docs/PRIOR_ART.md](docs/PRIOR_ART.md)
+- [SECURITY.md](SECURITY.md)
 
 ## License
 
