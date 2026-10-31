@@ -28,6 +28,20 @@ The integrity of the pool's spot price as seen by other contracts during a trans
 - Large legitimate trades above the bound revert and have to be split across transactions. This is the intended trade-off.
 - Batched settlement: every swap on a pool in one transaction counts against the same bound.
 
+## Adversarial cases covered by tests
+
+`test/Adversarial.t.sol`, on the real PoolManager:
+
+- **Custom router.** An attacker-written router calls `unlock()` and `swap()` directly. A large swap is stopped, and the revert reason is checked to be `TickExcursionExceeded`, so it is the hook that stops it and not something else. A small swap through the same router is not blocked by the hook.
+- **Several swaps in one `unlock()`.** A small swap followed by a large one in the same callback is stopped by the hook.
+- **Direct calls to the callbacks.** Calling `beforeSwap` or `afterSwap` from anything other than the PoolManager reverts with `NotPoolManager`, so nobody can seed or skip the recorded start tick.
+- **Non-zero start ticks.** Pools starting at price 2 (positive tick) and 1/2 (negative tick): the recorded start tick matches the real pre-swap tick exactly, and large moves revert. This checks the signed packing in transient storage.
+- **Exact-output swaps.** Small ones pass, large ones revert.
+- **Several pools in one transaction.** Two pools on the same hook have independent budgets; exceeding the bound on one of them reverts.
+- **Caught reverts.** A large swap that reverts inside a try/catch leaves no transient state behind; the next swap records the real pre-transaction tick.
+
+Not covered by tests: every possible router design (the guarantee relies on the PoolManager always calling the hook, which these tests exercise but cannot exhaust), manipulation across transactions, and formal verification.
+
 ## Assumptions
 
 - The hook is deployed at an address whose flag bits match its permissions. The constructor checks this.

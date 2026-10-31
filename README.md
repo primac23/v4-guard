@@ -51,6 +51,7 @@ For every pool, after every swap in a transaction: `|tick - startTick| <= MAX_TI
 - Enforced in `beforeSwap`/`afterSwap`, which the PoolManager always calls. No cooperation from the router is needed.
 - Holds after every swap, not only at the end, so an out-and-back manipulation reverts at the first swap that crosses the bound.
 - State is keyed by pool id and disappears at the end of the transaction.
+- Adversarial cases (custom router, several swaps in one `unlock()`, direct callback calls, non-zero start ticks, exact output, several pools, caught reverts) are covered in `test/Adversarial.t.sol`.
 
 Not covered: manipulation split across several transactions or blocks (hooks with a per-block reference cover that case, see Related work), moves that stay within the bound, and depth changes through liquidity add/remove. All swaps on a pool in one transaction share the same budget, which matters for batched settlement. Details in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
@@ -131,7 +132,7 @@ forge test -vv
 forge test --match-contract GasBenchmarkV2Test -vv
 ```
 
-29 tests passing.
+41 tests passing.
 
 ## Documentation
 

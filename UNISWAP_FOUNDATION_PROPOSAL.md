@@ -17,7 +17,7 @@ Pools are still used as price sources by lending markets, vaults and liquidation
 ## Current state (2026-10-31)
 
 - `TickExcursionGuardHook` tested on the real v4 PoolManager: single-swap bound, cumulative excursion in one transaction, round-trip manipulation, bounded out-and-back arbitrage, and a 1,024-run fuzz of the bound.
-- 29 tests passing.
+- 41 tests passing.
 - Gas, measured on identical pools with and without the hook:
 
 | Swaps in one tx | No hook | With TickExcursionGuardHook | Overhead | Overhead per swap | Relative |
