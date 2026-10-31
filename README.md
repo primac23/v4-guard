@@ -86,7 +86,7 @@ Both columns come from tests in this repository, run with the same 50-tick bound
 
 ## Gas
 
-Measured on the real PoolManager with identical pools, with and without the hook. A single swap costs 11,632 gas more (7.8% of the swap call). Full table and method in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+Measured on the real PoolManager with identical pools, with and without the hook. A single swap costs 11,681 gas more (7.8% of the swap call). Full table and method in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ## Usage
 
