@@ -1,31 +1,49 @@
 # Uniswap Foundation Grant Proposal: v4-guard
 
-## 1. Project Summary
-* **Project Name:** v4-guard
-* **Category:** Security Infrastructure / Developer Tooling
-* **Target:** Uniswap v4 Hook Ecosystem
-* **Requested Funding:** $32,500 USDC
-* **Duration:** 12 Weeks (4 Milestones)
+## Summary
 
-v4-guard provides reusable, auditable defensive security primitives for Uniswap v4 hooks leveraging EIP-1153 transient storage:
-1. `TransientReentrancyGuard` — zero-SSTORE execution safety lock.
-2. `ImbalanceGateHook` — transaction-level accounting invariant enforcement based exclusively on observed `BalanceDelta` values at an explicit finalization boundary.
+- **Project:** v4-guard
+- **Category:** Security infrastructure for hook developers
+- **Requested:** $32,500 USDC
+- **Duration:** 12 weeks, 4 milestones
+- **Applicant:** Primac George ([github.com/primac23](https://github.com/primac23))
 
----
+v4-guard is a small library of security hooks for Uniswap v4. Its core piece, `TickExcursionGuardHook`, caps how far a pool's price can move inside a single transaction. It runs on every swap, the router can't skip it, and on a single swap it adds 11,632 gas (7.8%).
 
-## 2. Milestones & Budget Allocation
+## Problem
 
-| Milestone | Deliverables | Target KPI | Allocation |
+Pools are still used as price sources by lending markets, vaults and liquidation logic. The standard attack is a flash-loan round trip: move the price, exploit the consumer, move it back. Because the net flow is close to zero, checks based on volume or balances miss it. v4 makes it cheap to attach a check at the pool level, but today a hook developer who wants this has to write and audit it themselves.
+
+## Current state (2026-10-31)
+
+- `TickExcursionGuardHook` tested on the real v4 PoolManager: single-swap bound, cumulative excursion in one transaction, round-trip manipulation, bounded out-and-back arbitrage, and a 1,024-run fuzz of the bound.
+- 24 tests passing.
+- Gas, measured on identical pools with and without the hook:
+
+| Swaps in one tx | No hook | With TickExcursionGuardHook | Overhead | Overhead per swap | Relative |
+|:-:|-:|-:|-:|-:|-:|
+| 1 | 149,285 | 160,917 | +11,632 | +11,632 | +7.8% |
+| 2 | 228,883 | 248,261 | +19,378 | +9,689 | +8.5% |
+| 5 | 404,603 | 447,353 | +42,750 | +8,550 | +10.6% |
+
+- Known limits are documented in the README and threat model.
+
+An earlier version of this proposal cited a gas saving of about 35,600 measured against a persistent-storage variant on a mock PoolManager. That comparison wasn't representative and has been removed.
+
+## Milestones
+
+| Milestone | Deliverables | Acceptance criteria | Budget |
 |---|---|---|---|
-| **M1: Core Hardening & Invariant Fuzzing** (Weeks 1–3) | Slot domain separation across pools/managers; fee-on-transfer edge-case docs; expanded invariant harness. | All documented security invariants covered by deterministic tests and stateful fuzzing (1,024+ runs per target). Zero persistent storage allocation. | $7,500 USDC |
-| **M2: Adversarial Testing & Formal Specs** (Weeks 4–6) | Formal verification models (Halmos / symbolic execution) demonstrating $D(\tau) \le \epsilon$ and EIP-1153 rollback isolation. | Mathematical proof / symbolic check reproducible from CLI; zero slot-aliasing risks identified. | $10,000 USDC |
-| **M3: Independent Security Review** (Weeks 7–9) | External third-party audit engagement; remediation of all findings; public report publication. | All High/Critical findings remediated; Medium findings either remediated or explicitly accepted with documented rationale. | $10,000 USDC |
-| **M4: Developer Tooling & Release** (Weeks 10–12) | Public GitHub release, plug-and-play template harness, integration guide, npm distribution. | Public release; reproducible test harness; at least 2 ecosystem pilot integrations evaluated. | $5,000 USDC |
-| **TOTAL** | | | **$32,500 USDC** |
+| **M1: Block-scoped mode and per-pool config** (weeks 1–3) | Optional block-scoped bound (manipulation split across transactions in one block). Per-pool deviation set at pool initialization. Stateful invariant tests on the real PoolManager. | Invariant suite with a handler covering swaps, liquidity changes and multiple pools; 1,024+ runs per target; all passing in CI. | $7,500 |
+| **M2: Attack PoCs and symbolic checks** (weeks 4–6) | Reproducible PoCs of spot-price manipulation against a sample lending consumer, failing without the hook and reverting with it. Halmos checks of the excursion bound. | PoCs and symbolic checks run from one CLI command; results documented. | $8,000 |
+| **M3: Independent review** (weeks 7–9) | Review by an independent security researcher, remediation, public report. | All High and Critical findings fixed; Medium findings fixed or accepted with written rationale. | $12,000 |
+| **M4: Integration kit and release** (weeks 10–12) | Library form that can be inherited into existing hooks, deployment scripts with HookMiner, integration guide, tagged release. | Public release; at least 2 hook teams evaluate the integration and their feedback is published. | $5,000 |
+| **Total** | | | **$32,500** |
 
----
+## Out of scope
 
-## 3. Current Verification Status
-* **Test Results:** 16 passed, 0 failed, 0 skipped (Foundry, Solc 0.8.26, Cancun EVM).
-* **Fuzz Targets:** 1,024 runs for lock clearing and settlement invariants.
-* **Empirical Benchmarks:** ~35.6k gas saved vs persistent storage; ~4.1k marginal gas per guarded swap.
+v4-guard is not an oracle, does not prevent MEV or arbitrage, and does not replace an audit of the protocols that consume pool prices.
+
+## About me
+
+I do independent smart contract security research on Immunefi, Cantina and HackerOne. I'm also building AEGIS ([github.com/primac23/aegis-core](https://github.com/primac23/aegis-core)), a fail-closed release authorization layer for cross-chain bridges with a Rust guardian daemon and live reorg and RPC-poisoning demos.

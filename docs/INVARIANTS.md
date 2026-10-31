@@ -1,37 +1,32 @@
-# v4-guard — Invariant Specifications
+# Invariants
 
-## 1. Execution Safety Invariant (TransientReentrancyGuard)
-For any protected hook entry point $f \in \mathcal{F}_{\text{protected}}$:
+## 1. TickExcursionGuardHook
 
-$$\text{LockState}(t) \in \{0, 1\}$$
+For a pool P and a transaction T, let `t0` be the tick of P right before the first swap on P in T, and `t_k` the tick after the k-th swap on P in T.
 
-* **Entry:** If $\text{LockState}(t) = 1$, execution reverts with `ReentrantCall()`. Otherwise, $\text{LockState}(t) \leftarrow 1$.
-* **Exit:** $\text{LockState}(t) \leftarrow 0$.
-* **Lifecycle:** Stored exclusively in EIP-1153 transient storage on a deterministic slot. Automatically clears at transaction termination.
+Checked in `afterSwap`, for every k:
 
----
+    |t_k - t0| <= MAX_TICK_DEVIATION
 
-## 2. Economic Settlement Invariant (ImbalanceGateHook)
-For an atomic execution trace $\tau = \{\Delta_1, \Delta_2, \ldots, \Delta_n\}$ observed across $n$ swap callbacks within a single `PoolManager.unlock()` execution context:
+- It holds after every swap, not only at the end of the transaction. A round trip that goes out of bounds and comes back reverts at the first swap that crosses the bound.
+- It doesn't depend on the router: both checks run in hook callbacks invoked by the PoolManager.
+- `t0` lives in transient storage keyed by pool id. Pools don't share state, and the value is gone at the end of the transaction.
+- If a swap reverts, its transient write reverts with it.
 
-$$\Delta_i = \text{BalanceDelta}_i = (\delta_{0,i}, \delta_{1,i})$$
+Covered by `test/TickExcursionGuardHook.t.sol`: deterministic cases (single large swap, cumulative excursion, round-trip manipulation, bounded out-and-back) plus a 1,024-run fuzz on swap size and direction.
 
-Cumulative observed trace delta:
-$$D(\tau) = \sum_{i=1}^{n} \Delta_i = \left(\sum_{i=1}^{n} \delta_{0,i}, \; \sum_{i=1}^{n} \delta_{1,i}\right) = (D_0(\tau), D_1(\tau))$$
+## 2. TransientReentrancyGuard
 
-Configured bound parameter: $\epsilon = (\epsilon_0, \epsilon_1)$
+The lock is 0 or 1 in a fixed transient slot. Entry reverts with `ReentrantCall()` if the lock is 1, otherwise sets it. Exit clears it. It is also cleared automatically at the end of the transaction.
 
-### Settlement Rule (Evaluated at Finalization Boundary)
-$$\text{Settlement}(\tau) = \text{ALLOW} \iff |D_0(\tau)| \le \epsilon_0 \land |D_1(\tau)| \le \epsilon_1$$
-$$\neg \text{ALLOW}(\tau) \implies \text{REVERT}(\tau)$$
+## 3. ImbalanceGateHook (experimental)
 
-Intermediate deviations where an individual step $k$ exhibits $|\sum_{i=1}^k \delta_{j,i}| > \epsilon_j$ are permissible if and only if subsequent compensating actions satisfy the bound prior to settlement finalization.
+For swaps on pool P within a transaction, `D = sum of BalanceDelta`. `validateSettlementInvariant(P)` reverts if `|D0| > e0` or `|D1| > e1`.
 
----
+Limitations:
 
-## 3. Failure Isolation & Rollback Guarantee
-For any nested execution frame $\tau_{\text{inner}}$:
+- `validateSettlementInvariant` is not called by the PoolManager. It runs only if the router calls it, so anyone using their own router skips it.
+- A round trip with near-zero net flow passes, however large the intermediate swaps are.
+- The accumulator lasts for the whole transaction, so two `unlock()` calls in one transaction share it.
 
-$$\tau_{\text{inner}} \to \text{REVERT} \implies T_{\text{after}} = T_{\text{before}}$$
-
-Transient storage modifications revert alongside EVM state reversals, guaranteeing zero residual accounting pollution for subsequent independent operations within the block.
+Treat it as a volume limit for trusted routers, not as protection against an attacker.
