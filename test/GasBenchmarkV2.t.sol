@@ -36,10 +36,27 @@ contract GasBenchmarkV2Test is Test, Deployers {
         console.log(string.concat("BENCH,", arm, ",", vm.toString(n), ",", vm.toString(used)));
     }
 
-    function test_bench_plain_1() public { _measure("plain", plainKey, 1); }
-    function test_bench_guard_1() public { _measure("guard", guardKey, 1); }
-    function test_bench_plain_2() public { _measure("plain", plainKey, 2); }
-    function test_bench_guard_2() public { _measure("guard", guardKey, 2); }
-    function test_bench_plain_5() public { _measure("plain", plainKey, 5); }
-    function test_bench_guard_5() public { _measure("guard", guardKey, 5); }
+    function test_bench_plain_1() public {
+        _measure("plain", plainKey, 1);
+    }
+
+    function test_bench_guard_1() public {
+        _measure("guard", guardKey, 1);
+    }
+
+    function test_bench_plain_2() public {
+        _measure("plain", plainKey, 2);
+    }
+
+    function test_bench_guard_2() public {
+        _measure("guard", guardKey, 2);
+    }
+
+    function test_bench_plain_5() public {
+        _measure("plain", plainKey, 5);
+    }
+
+    function test_bench_guard_5() public {
+        _measure("guard", guardKey, 5);
+    }
 }
