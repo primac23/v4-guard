@@ -77,7 +77,7 @@ Both columns come from tests in this repository, run with the same 50-tick bound
 | Honest traders after an attack | unaffected | halted for the cooldown |
 | Configuration | immutable per deployment, nothing to configure | per pool, set before initialization |
 | Persistent storage | none | yes |
-| Can be combined with another hook's logic | yes, via `TickExcursionGuard` | no |
+| Packaged for use inside another hook | yes, `TickExcursionGuard` base contract | standalone hook, not built as a base |
 
 ## Gas
 
